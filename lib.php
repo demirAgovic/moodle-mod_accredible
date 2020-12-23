@@ -14,6 +14,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+defined('MOODLE_INTERNAL') || die();
 
 /**
  * Certificate module core interaction API
@@ -33,9 +34,13 @@ require_once($CFG->dirroot . '/mod/accredible/locallib.php');
  * @return array $certificate new certificate object
  */
 function accredible_add_instance($post) {
-    global $DB, $CFG;
+    global $DB;
 
     $course = $DB->get_record('course', array('id'=> $post->course), '*', MUST_EXIST);
+
+    $post->groupid = isset($post->groupid) ? $post->groupid : null;
+
+    $post->instance = isset($post->instance) ? $post->instance : null;
 
     $group_id = sync_course_with_accredible($course, $post->instance, $post->groupid);
 
@@ -71,7 +76,7 @@ function accredible_add_instance($post) {
 
     // Save record
     $db_record = new stdClass();
-    $db_record->completionactivities = $post->completionactivities;
+    $db_record->completionactivities = isset($post->completionactivities) ? $post->completionactivities : null;
     $db_record->name = $post->name;
     $db_record->course = $post->course;
     $db_record->finalquiz = $post->finalquiz;
@@ -90,10 +95,7 @@ function accredible_add_instance($post) {
  */
 function accredible_update_instance($post) {
     // To update your certificate details, go to accredible.com.
-    global $DB, $CFG;
-
-    // don't know what this is
-    $accredible_cm = get_coursemodule_from_id('accredible', $post->coursemodule, 0, false, MUST_EXIST);
+    global $DB;
 
     $accredible_certificate = $DB->get_record('accredible', array('id'=> $post->instance), '*', MUST_EXIST);
 
@@ -110,8 +112,7 @@ function accredible_update_instance($post) {
         // int user_id => boolean issue_certificate
         if($accredible_certificate->achievementid) {
             $groupid = $accredible_certificate->achievementid;
-        }
-        elseif($accredible_certificate->groupid) {
+        } else if($accredible_certificate->groupid) {
             $groupid = $accredible_certificate->groupid;
         }
         foreach ($post->unissuedusers as $user_id => $issue_certificate) {
@@ -138,8 +139,7 @@ function accredible_update_instance($post) {
                         }
                         accredible_post_essay_answers($user_id, $post->course, $credential_id);
                         accredible_course_duration_evidence($user_id, $post->course, $credential_id, $completed_timestamp);
-                }
-                elseif($accredible_certificate->achievementid){
+                } else if($accredible_certificate->achievementid){
                     if($post->finalquiz) {
                         $quiz = $DB->get_record('quiz', array('id'=>$post->finalquiz), '*', MUST_EXIST);
                         $grade = min( ( quiz_get_best_grade($quiz, $user->id) / $quiz->grade ) * 100, 100);
@@ -148,6 +148,7 @@ function accredible_update_instance($post) {
                         // This is an older activity that now uses the course completion to issue cert.
                         // Can't use accredible_issue_default_certificate, but create_credential only works with groupid.
                     }
+                    //TODO: testing
                     $result = accredible_issue_default_certificate($user->id, $accredible_certificate->id, fullname($user), $user->email, $grade, $quiz->name, $completed_timestamp);
                     $credential_id = $result->credential->id;
                 }
@@ -276,7 +277,7 @@ function accredible_delete_instance($id) {
  */
 function accredible_supports($feature) {
     switch ($feature) {
-        case FEATURE_MOD_INTRO:               return false;
+    case FEATURE_MOD_INTRO: return false;
         default: return null;
     }
 }
