@@ -32,14 +32,24 @@ require_once ($CFG->dirroot.'/course/moodleform_mod.php');
 require_once($CFG->dirroot.'/mod/accredible/lib.php');
 require_once($CFG->dirroot.'/mod/accredible/locallib.php');
 
+use mod_accredible\Html2Text\Html2Text;
+
 class mod_accredible_mod_form extends moodleform_mod {
 
     function definition() {
-        global $DB, $OUTPUT, $CFG;
+        global $DB, $COURSE, $CFG;
         $updatingcert = false;
         $alreadyexists = false;
 
-        $description = Html2Text\Html2Text::convert($course->summary);
+        if (!extension_loaded('mbstring')) {
+            print_error('You or administrator must install mbstring extensions of php.');
+        }
+
+        if (!extension_loaded('dom')) {
+            print_error('You or administrator must install dom extensions of php.');
+        }
+
+        $description = Html2Text::convert($COURSE->summary);
         if(empty($description)){
             $description = "Recipient has compeleted the achievement.";
         }
@@ -56,9 +66,7 @@ class mod_accredible_mod_form extends moodleform_mod {
             $id = $cm->course;
             $course = $DB->get_record('course', array('id'=> $id), '*', MUST_EXIST);
             $accredible_certificate = $DB->get_record('accredible', array('id'=> $cm->instance), '*', MUST_EXIST);
-        } 
-        // New form init
-        elseif(optional_param('course', '', PARAM_INT)) {
+        } else if(optional_param('course', '', PARAM_INT)) { // New form init
             $id =  optional_param('course', '', PARAM_INT);
             $course = $DB->get_record('course', array('id'=> $id), '*', MUST_EXIST);
             // see if other accredible certificates already exist for this course
@@ -151,7 +159,7 @@ class mod_accredible_mod_form extends moodleform_mod {
         }
 
         // Unissued certificates header
-        if (count($users_earned_certificate) > 0) {
+        if (isset($users_earned_certificate) && count($users_earned_certificate) > 0) {
             $unissued_header = false;
             foreach ($users_earned_certificate as $user) {
                 $existing_certificate = false;
@@ -180,7 +188,6 @@ class mod_accredible_mod_form extends moodleform_mod {
             }
         }
 
-
         // Manually issue certificates header
         $mform->addElement('header', 'chooseusers', get_string('manualheader', 'accredible'));
         $this->add_checkbox_controller(1, 'Select All/None');
@@ -202,8 +209,7 @@ class mod_accredible_mod_form extends moodleform_mod {
                         $cert_id = $certificate->id;
                         if(isset($certificate->url)) {
                             $cert_link = $certificate->url;
-                        }
-                        else {
+                        } else {
                             $cert_link = 'https://www.credential.net/'.$cert_id;
                         }
                     }
@@ -224,14 +230,11 @@ class mod_accredible_mod_form extends moodleform_mod {
             }
         }
 
-
         $mform->addElement('header', 'gradeissue', get_string('gradeissueheader', 'accredible'));
         $mform->addElement('select', 'finalquiz', get_string('chooseexam', 'accredible'), $quiz_choices);
         $mform->addElement('text', 'passinggrade', get_string('passinggrade', 'accredible'));
         $mform->setType('passinggrade', PARAM_INT);
         $mform->setDefault('passinggrade', 70);
-
-
 
         $mform->addElement('header', 'completionissue', get_string('completionissueheader', 'accredible'));
         if($updatingcert) {
@@ -251,7 +254,6 @@ class mod_accredible_mod_form extends moodleform_mod {
             //     }
             // }   
         }
-
 
         $this->standard_coursemodule_elements();
         $this->add_action_buttons();
